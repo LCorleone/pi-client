@@ -1,0 +1,17 @@
+{
+  "name": "pi-client",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter app tauri dev",
+    "build": "pnpm --filter bridge build && pnpm --filter app tauri build",
+    "build:bridge": "pnpm --filter bridge build",
+    "build:app": "pnpm --filter app build",
+    "build:portable": "bash scripts/build-portable.sh",
+    "build:portable:win": "powershell -File scripts/build-portable.ps1",
+    "package": "bash scripts/package.sh",
+    "package:win": "powershell -File scripts/package.ps1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

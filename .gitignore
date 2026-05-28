@@ -1,0 +1,31 @@
+node_modules/
+dist/
+target/
+*.tsbuildinfo
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example
+
+# Rust
+app/src-tauri/target/
+
+# Bridge
+bridge/dist/
+
+# Tauri
+app/dist/
+
+# Svelte
+.svelte-kit/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*

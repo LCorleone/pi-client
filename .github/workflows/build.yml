@@ -1,0 +1,138 @@
+name: Build Pi Desktop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Build bridge JS bundle
+        run: cd bridge && pnpm build
+
+      - name: Build bridge SEA binary
+        shell: pwsh
+        run: |
+          # Generate SEA blob
+          node --experimental-sea-config bridge/sea-config.json
+
+          # Copy node.exe as the base executable
+          $nodePath = (Get-Command node).Source
+          Copy-Item $nodePath bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe
+
+          # Remove existing signature (required before injecting blob on Windows)
+          signtool remove /s bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "No signature to remove (expected on some Node builds)"
+          }
+
+          # Inject SEA blob into the executable
+          npx postject bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe NODE_SEA_BLOB bridge/dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce655ab
+
+          Write-Host "=== SEA binary ==="
+          Get-Item bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe | Format-List Name, Length
+
+      - name: Place sidecar binary for Tauri
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path app/src-tauri/binaries | Out-Null
+          Copy-Item bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe app/src-tauri/binaries/
+
+      - name: Build Tauri app (release, no installer)
+        shell: pwsh
+        run: |
+          cd app
+          pnpm tauri build --no-bundle
+
+      - name: Assemble portable package
+        shell: pwsh
+        run: |
+          $version = "0.1.0"
+          $distDir = "dist/Pi Desktop Portable"
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+
+          # Copy main app executable
+          Copy-Item app/src-tauri/target/release/pi-desktop.exe "$distDir/Pi Desktop.exe"
+
+          # Copy bridge sidecar
+          Copy-Item bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe "$distDir/pi-bridge.exe"
+
+          # Copy WebView2Loader.dll if present
+          if (Test-Path "app/src-tauri/target/release/WebView2Loader.dll") {
+            Copy-Item "app/src-tauri/target/release/WebView2Loader.dll" "$distDir/"
+          }
+
+          # Write README
+          @"
+          Pi Desktop — Portable Edition v$version
+          ============================================
+
+          Just run Pi Desktop.exe. No installation needed.
+
+          Requirements:
+            - Windows 10 or 11 (WebView2 runtime is built-in on Windows 11)
+            - If WebView2 is missing on Windows 10, the app will prompt to install it
+            - No Node.js installation needed (bundled in pi-bridge.exe)
+
+          First run will guide you through setup:
+            1. Enter your API provider URL and key
+            2. Select or install Git Bash (for agent shell commands)
+            3. Pick your project folder
+
+          That's it. Happy coding!
+          "@ | Out-File -Encoding UTF8 "$distDir/README.txt"
+
+          Write-Host "=== Portable folder contents ==="
+          Get-ChildItem "$distDir" | Format-Table Name, Length
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $version = "0.1.0"
+          $zipPath = "dist/Pi-Desktop-v$version-Portable.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath }
+          Compress-Archive -Path "dist/Pi Desktop Portable/*" -DestinationPath $zipPath
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "ZIP: $zipPath ($([math]::Round($size, 1)) MB)"
+
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pi-Desktop-Portable-ZIP
+          path: dist/Pi-Desktop-v0.1.0-Portable.zip
+
+      - name: Upload portable folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pi-Desktop-Portable-Folder
+          path: dist/Pi Desktop Portable/
