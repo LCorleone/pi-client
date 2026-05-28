@@ -35,7 +35,7 @@ pub fn run() {
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().cloned().unwrap())
                 .menu(&menu)
-                .menu_on_left_click(true)
+                .show_menu_on_left_click(true)
                 .tooltip("Pi Desktop")
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "show" => {
@@ -53,12 +53,6 @@ pub fn run() {
 
             // ── Window close → hide to tray ─────────────────────
             if let Some(window) = app.get_webview_window("main") {
-                let window_clone = window.clone();
-                window.on_window_move(move || {
-                    // no-op, just ensuring window is tracked
-                    let _ = &window_clone;
-                });
-
                 // Override close behavior: hide instead of quit
                 let win = window.clone();
                 window.on_window_event(move |event| {
