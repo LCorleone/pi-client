@@ -50,9 +50,13 @@ jobs:
           Copy-Item $nodePath bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe
 
           # Remove existing signature (required before injecting blob on Windows)
-          signtool remove /s bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "No signature to remove (expected on some Node builds)"
+          # Use signtool if available, otherwise skip
+          $signtool = Get-Command signtool -ErrorAction SilentlyContinue
+          if ($signtool) {
+            & $signtool.Path remove /s bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe 2>$null
+            Write-Host "Signature removed"
+          } else {
+            Write-Host "signtool not found, skipping signature removal"
           }
 
           # Inject SEA blob into the executable

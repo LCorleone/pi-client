@@ -1,5 +1,5 @@
 {
-  "main": "dist/pi-bridge.cjs",
-  "output": "dist/sea-prep.blob",
+  "main": "bridge/dist/pi-bridge.cjs",
+  "output": "bridge/dist/sea-prep.blob",
   "disableExperimentalSEAWarning": true
 }
