@@ -3,6 +3,10 @@ name: Build Pi Desktop
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'dev-log/**'
+      - '**/*.md'
+      - 'LICENSE'
   pull_request:
     branches: [main]
   workflow_dispatch:
