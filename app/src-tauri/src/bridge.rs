@@ -40,11 +40,8 @@ impl BridgeProcess {
     }
 }
 
-/// Spawn the bridge sidecar and read events
-pub async fn spawn_bridge(app: &AppHandle) -> Result<(), String> {
-    let bridge = BridgeProcess::new();
-    let bridge = Arc::new(bridge);
-
+/// Spawn the bridge sidecar, attach it to an existing BridgeProcess, and read events.
+pub async fn spawn_and_attach(app: &AppHandle, bridge: &Arc<BridgeProcess>) -> Result<(), String> {
     // Start the sidecar
     let (mut rx, child) = app
         .shell()
@@ -55,13 +52,9 @@ pub async fn spawn_bridge(app: &AppHandle) -> Result<(), String> {
 
     bridge.set_child(child).await;
 
-    // Store bridge in app state
-    app.manage(bridge.clone());
-
     // Read events from bridge stdout and emit to frontend
     let app_handle = app.clone();
     tokio::spawn(async move {
-        // CommandEvent is an enum with Stdout, Stderr, Terminated, Error variants
         while let Some(event) = rx.recv().await {
             match event {
                 tauri_plugin_shell::process::CommandEvent::Stdout(line) => {

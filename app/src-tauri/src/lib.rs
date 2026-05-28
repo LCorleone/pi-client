@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
@@ -8,12 +9,6 @@ mod bridge;
 mod commands;
 mod session;
 mod state;
-
-/// Bridge event payload emitted to the frontend
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct BridgeEventPayload {
-    pub raw: String,
-}
 
 pub fn run() {
     tauri::Builder::default()
@@ -53,7 +48,6 @@ pub fn run() {
 
             // ── Window close → hide to tray ─────────────────────
             if let Some(window) = app.get_webview_window("main") {
-                // Override close behavior: hide instead of quit
                 let win = window.clone();
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -63,16 +57,14 @@ pub fn run() {
                 });
             }
 
-            // ── Global Shortcut (Ctrl+Shift+P) ──────────────────
-            // NOTE: In Tauri v2, global shortcuts require the
-            // tauri-plugin-global-shortcut plugin. For now we register
-            // the shortcut via the frontend keydown handler as a fallback.
-            // The plugin can be added later for system-wide shortcuts.
-
             // ── Spawn bridge sidecar ─────────────────────────────
+            // Pre-create the bridge state and manage it before spawning
+            let bridge = Arc::new(bridge::BridgeProcess::new());
+            app.manage(bridge.clone());
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = bridge::spawn_bridge(&handle).await {
+                if let Err(e) = bridge::spawn_and_attach(&handle, &bridge).await {
                     eprintln!("Bridge error: {e}");
                 }
             });
