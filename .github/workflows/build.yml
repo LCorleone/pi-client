@@ -47,23 +47,40 @@ jobs:
 
           # Copy node.exe as the base executable
           $nodePath = (Get-Command node).Source
-          Copy-Item $nodePath bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe
+          $seaExe = "bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe"
+          Copy-Item $nodePath $seaExe
 
           # Remove existing signature (required before injecting blob on Windows)
-          # Use signtool if available, otherwise skip
-          $signtool = Get-Command signtool -ErrorAction SilentlyContinue
-          if ($signtool) {
-            & $signtool.Path remove /s bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe 2>$null
-            Write-Host "Signature removed"
+          # signtool is in Windows SDK, usually available on windows-latest
+          $signtoolPaths = @(
+            "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe",
+            "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe",
+            "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22000.0\x64\signtool.exe"
+          )
+          $signtoolExe = $signtoolPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ($signtoolExe) {
+            Write-Host "Removing signature with $signtoolExe"
+            & $signtoolExe remove /s $seaExe
           } else {
-            Write-Host "signtool not found, skipping signature removal"
+            Write-Host "No signtool found, attempting postject without signature removal"
           }
 
+          # Detect sentinel fuse from the Node binary
+          $fuse = node -e "
+            const buf = require('fs').readFileSync(process.execPath);
+            const str = buf.toString('latin1');
+            const re = /NODE_SEA_FUSE_[a-f0-9]{20,}/g;
+            const m = re.exec(str);
+            if (m) console.log(m[0]);
+            else console.log('NODE_SEA_FUSE_fce655ab');
+          "
+          Write-Host "Detected fuse: $fuse"
+
           # Inject SEA blob into the executable
-          npx postject bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe NODE_SEA_BLOB bridge/dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce655ab
+          npx postject $seaExe NODE_SEA_BLOB bridge/dist/sea-prep.blob --sentinel-fuse $fuse
 
           Write-Host "=== SEA binary ==="
-          Get-Item bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe | Format-List Name, Length
+          Get-Item $seaExe | Format-List Name, Length
 
       - name: Place sidecar binary for Tauri
         shell: pwsh
