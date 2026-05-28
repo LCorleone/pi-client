@@ -83,6 +83,9 @@ pub async fn spawn_and_attach(app: &AppHandle, bridge: &Arc<BridgeProcess>) -> R
                     let _ = app_handle.emit("bridge_exited", ());
                     break;
                 }
+                _ => {
+                    // Ignore other event types
+                }
             }
         }
     });
