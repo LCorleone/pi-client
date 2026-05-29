@@ -52,6 +52,9 @@ pub async fn spawn_and_attach(app: &AppHandle, bridge: &Arc<BridgeProcess>) -> R
 
     bridge.set_child(child).await;
 
+    // Notify the frontend that the bridge sidecar is up and ready
+    let _ = app.emit("bridge_ready", ());
+
     // Clone the bridge Arc so the reader task can clear the handle on exit
     let bridge_clone = bridge.clone();
 

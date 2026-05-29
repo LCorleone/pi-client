@@ -28,6 +28,7 @@
   let showSetup = $state(false);
   let sidebarTab = $state<"sessions" | "files">("sessions");
   let sidebarVisible = $state(true);
+  let bridgeReady = $state(false);
 
   onMount(async () => {
     // If not running inside Tauri, show welcome with note
@@ -73,14 +74,21 @@
       // Load session list
       await sessions.loadSessionList();
 
-      // Listen for bridge spawn errors
+      // Listen for bridge spawn errors and readiness events
       try {
         const { listen } = await import("@tauri-apps/api/event");
         await listen<string>("bridge_error", (event) => {
           session.error = `Bridge error: ${event.payload}`;
         });
+        await listen("bridge_ready", () => {
+          bridgeReady = true;
+        });
+        await listen("bridge_exited", () => {
+          bridgeReady = false;
+        });
       } catch {
-        // Not in Tauri
+        // Not in Tauri — allow interaction anyway
+        bridgeReady = true;
       }
 
       // Register keyboard shortcuts
@@ -107,6 +115,10 @@
   });
 
   async function handlePickDirectory() {
+    if (!bridgeReady) {
+      session.error = "Bridge is still starting up — please wait a moment.";
+      return;
+    }
     try {
       const dir = await pickDirectory();
       if (dir) {
@@ -175,9 +187,14 @@
           <p class="welcome-subtitle">Your AI coding assistant</p>
           <p class="welcome-desc">Select a project folder to begin a coding session</p>
 
-          <button onclick={handlePickDirectory} class="welcome-btn">
-            <span class="btn-icon">📁</span>
-            Open Folder
+          <button onclick={handlePickDirectory} class="welcome-btn" disabled={!bridgeReady}>
+            {#if bridgeReady}
+              <span class="btn-icon">📁</span>
+              Open Folder
+            {:else}
+              <span class="btn-icon">⏳</span>
+              Preparing environment…
+            {/if}
           </button>
 
           {#if !isTauriAvailable()}
@@ -369,7 +386,7 @@
     font-size: 1em;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
+    transition: background 0.2s, transform 0.1s, opacity 0.2s;
   }
 
   .welcome-btn:hover {
@@ -378,6 +395,16 @@
 
   .welcome-btn:active {
     transform: scale(0.98);
+  }
+
+  .welcome-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .welcome-btn:disabled:hover {
+    background: var(--color-accent);
   }
 
   .btn-icon {
