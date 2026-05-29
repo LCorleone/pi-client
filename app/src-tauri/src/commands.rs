@@ -444,9 +444,17 @@ pub async fn save_settings(app: tauri::AppHandle, settings: AppSettings) -> Resu
     Ok(())
 }
 
+/// Test API connection result
+#[derive(serde::Serialize)]
+pub struct ConnectionTestResult {
+    pub success: bool,
+    pub status: Option<u16>,
+    pub message: String,
+}
+
 /// Test API connection by making a simple request
 #[tauri::command]
-pub async fn test_api_connection(api_url: String, api_key: String) -> Result<bool, String> {
+pub async fn test_api_connection(api_url: String, api_key: String) -> Result<ConnectionTestResult, String> {
     // Reject non-HTTPS URLs to prevent key leakage
     if !api_url.starts_with("https://") {
         return Err("API URL must use https://".to_string());
@@ -463,11 +471,18 @@ pub async fn test_api_connection(api_url: String, api_key: String) -> Result<boo
 
     match response {
         Ok(resp) => {
-            let status = resp.status();
-            // 200, 401, 403 all mean server is reachable
-            Ok(status.is_success() || status.as_u16() == 401 || status.as_u16() == 403)
+            let status = resp.status().as_u16();
+            Ok(ConnectionTestResult {
+                success: true,
+                status: Some(status),
+                message: format!("HTTP {} — server reachable", status),
+            })
         }
-        Err(e) => Err(format!("Cannot reach {}: {}", api_url, e)),
+        Err(e) => Ok(ConnectionTestResult {
+            success: false,
+            status: None,
+            message: format!("Cannot reach {}: {}", api_url, e),
+        }),
     }
 }
 

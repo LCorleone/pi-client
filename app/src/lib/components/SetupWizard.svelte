@@ -18,7 +18,7 @@
   let modelName = $state("claude-sonnet-4-20250514");
   let showApiKey = $state(false);
   let testingConnection = $state(false);
-  let connectionTestResult = $state<"success" | "error" | null>(null);
+  let connectionTestResult = $state<{ success: boolean; message: string } | null>(null);
 
   // Shell state
   let detectedShell = $state("");
@@ -45,12 +45,11 @@
     try {
       // Use Tauri HTTP if available, otherwise skip test
       const { invoke } = await import("@tauri-apps/api/core");
-      const result = await invoke("test_api_connection", { apiUrl, apiKey });
-      connectionTestResult = result ? "success" : "error";
+      const result = await invoke<{ success: boolean; status?: number; message: string }>("test_api_connection", { apiUrl, apiKey });
+      connectionTestResult = result;
     } catch {
       // Can't test outside Tauri (dev mode) — show nothing
       connectionTestResult = null;
-    } finally {
       testingConnection = false;
     }
   }
@@ -91,14 +90,17 @@
       default_provider: provider.name,
       shell_path: shellPath.trim() || null,
     };
-    await appSettings.saveSettings();
+    // Fire-and-forget save — don't block the wizard
+    appSettings.saveSettings();
     appSettings.setSetupCompleted(true);
 
-    // Dispatch event so +page.svelte knows setup is done
-    // Include cwd if user selected one
-    window.dispatchEvent(new CustomEvent("setup-complete", { detail: { cwd } }));
-
+    // Show "All Set!" screen first
     step = 4;
+
+    // Dispatch event after a brief delay so user sees the confirmation screen
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("setup-complete"));
+    }, 1000);
   }
 
   async function pickFolder() {
@@ -221,10 +223,10 @@
           >
             {testingConnection ? "⏳ Testing..." : "🔌 Test Connection"}
           </button>
-          {#if connectionTestResult === "success"}
-            <span class="test-result success">✅ Reachable</span>
-          {:else if connectionTestResult === "error"}
-            <span class="test-result error">❌ Cannot reach server</span>
+          {#if connectionTestResult}
+            <span class="test-result" class:success={connectionTestResult.success} class:error={!connectionTestResult.success}>
+              {connectionTestResult.success ? "✅" : "❌"} {connectionTestResult.message}
+            </span>
           {/if}
         </div>
       </div>

@@ -135,23 +135,11 @@
     window.addEventListener("new-session", handler);
 
     // Listen for setup wizard completion
-    const setupHandler = async (e: Event) => {
-      const detail = (e as CustomEvent).detail;
+    const setupHandler = () => {
       showSetup = false;
-      if (detail?.cwd) {
-        // User selected a folder during setup — create session directly
-        try {
-          await sessions.createSession(detail.cwd);
-          showWelcome = false;
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : "Failed to initialize session";
-          session.error = msg;
-          showWelcome = true;
-        }
-      } else {
-        // No folder selected during setup — show welcome to pick one
-        showWelcome = true;
-      }
+      // Just show the welcome screen — user will click "Open Folder" normally
+      // Trying to createSession here can fail if bridge sidecar isn't ready yet
+      showWelcome = true;
     };
     window.addEventListener("setup-complete", setupHandler);
 

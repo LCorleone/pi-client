@@ -249,7 +249,7 @@ export async function pickDirectory(): Promise<string | null> {
   return invoke("pick_directory");
 }
 
-export async function testApiConnection(apiUrl: string, apiKey: string): Promise<boolean> {
+export async function testApiConnection(apiUrl: string, apiKey: string): Promise<{ success: boolean; status?: number; message: string }> {
   return invoke("test_api_connection", { apiUrl, apiKey });
 }
 
