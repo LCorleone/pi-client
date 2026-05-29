@@ -2,7 +2,7 @@ use std::sync::Arc;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
-    Manager,
+    Emitter, Manager,
 };
 
 mod bridge;
