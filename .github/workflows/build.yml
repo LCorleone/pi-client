@@ -108,8 +108,9 @@ jobs:
           # Copy main app executable
           Copy-Item app/src-tauri/target/release/pi-desktop.exe "$distDir/Pi Desktop.exe"
 
-          # Copy bridge sidecar
-          Copy-Item bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe "$distDir/pi-bridge-x86_64-pc-windows-msvc.exe"
+          # Copy bridge sidecar — Tauri expects it in binaries/ subfolder
+          New-Item -ItemType Directory -Force -Path "$distDir/binaries" | Out-Null
+          Copy-Item bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe "$distDir/binaries/pi-bridge-x86_64-pc-windows-msvc.exe"
 
           # Copy WebView2Loader.dll if present
           if (Test-Path "app/src-tauri/target/release/WebView2Loader.dll") {

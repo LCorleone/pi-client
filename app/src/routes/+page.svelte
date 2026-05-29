@@ -73,6 +73,16 @@
       // Load session list
       await sessions.loadSessionList();
 
+      // Listen for bridge spawn errors
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        await listen<string>("bridge_error", (event) => {
+          session.error = `Bridge error: ${event.payload}`;
+        });
+      } catch {
+        // Not in Tauri
+      }
+
       // Register keyboard shortcuts
       const unregister = registerShortcuts({
         [Keys.NEW_SESSION]: handleNewSession,
