@@ -66,6 +66,7 @@ pub fn run() {
             let app_handle_for_error = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = bridge::spawn_and_attach(&handle, &bridge).await {
+                    bridge.set_error(e.clone()).await;
                     eprintln!("Bridge error: {e}");
                     let _ = app_handle_for_error.emit("bridge_error", &e);
                 }
@@ -84,6 +85,7 @@ pub fn run() {
             commands::get_last_session_id,
             // Bridge commands
             commands::is_bridge_ready,
+            commands::bridge_status,
             commands::send_prompt,
             commands::abort_agent,
             commands::set_model,

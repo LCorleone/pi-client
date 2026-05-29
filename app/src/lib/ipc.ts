@@ -257,6 +257,15 @@ export async function isBridgeReady(): Promise<boolean> {
   return invoke("is_bridge_ready");
 }
 
+export interface BridgeStatus {
+  ready: boolean;
+  error: string | null;
+}
+
+export async function getBridgeStatus(): Promise<BridgeStatus> {
+  return invoke("bridge_status");
+}
+
 export async function steer(message: string): Promise<void> {
   return invoke("steer", { message });
 }

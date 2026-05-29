@@ -8,6 +8,7 @@ use tokio::sync::Mutex;
 pub struct BridgeProcess {
     child: Arc<Mutex<Option<CommandChild>>>,
     ready: AtomicBool,
+    last_error: Arc<Mutex<Option<String>>>,
 }
 
 impl BridgeProcess {
@@ -15,6 +16,7 @@ impl BridgeProcess {
         Self {
             child: Arc::new(Mutex::new(None)),
             ready: AtomicBool::new(false),
+            last_error: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -47,6 +49,18 @@ impl BridgeProcess {
             let _ = child.kill();
         }
         self.ready.store(false, Ordering::SeqCst);
+    }
+
+    /// Store the last error from bridge spawn failure
+    pub async fn set_error(&self, error: String) {
+        let mut guard = self.last_error.lock().await;
+        *guard = Some(error);
+    }
+
+    /// Get the last error (if any)
+    pub async fn get_error(&self) -> Option<String> {
+        let guard = self.last_error.lock().await;
+        guard.clone()
     }
 }
 

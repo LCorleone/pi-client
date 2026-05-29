@@ -2,6 +2,7 @@ use crate::bridge::BridgeProcess;
 use crate::session::{
     AppSettings, FileEntry, ModelInfo, ProviderConfig, SavedSession, SessionMeta,
 };
+use serde::Serialize;
 use std::sync::Arc;
 use tauri::Manager;
 
@@ -164,6 +165,23 @@ pub async fn get_last_session_id(app: tauri::AppHandle) -> Result<Option<String>
 pub async fn is_bridge_ready(app: tauri::AppHandle) -> Result<bool, String> {
     let bridge = get_bridge(app).await?;
     Ok(bridge.is_ready())
+}
+
+/// Combined bridge status (ready + any error)
+#[derive(Serialize)]
+pub struct BridgeStatus {
+    pub ready: bool,
+    pub error: Option<String>,
+}
+
+/// Check bridge status (ready + any error)
+#[tauri::command]
+pub async fn bridge_status(app: tauri::AppHandle) -> Result<BridgeStatus, String> {
+    let bridge = get_bridge(app).await?;
+    Ok(BridgeStatus {
+        ready: bridge.is_ready(),
+        error: bridge.get_error().await,
+    })
 }
 
 /// Send a prompt to the agent

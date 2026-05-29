@@ -11,7 +11,7 @@
     isTauriAvailable,
     sendPrompt,
     abortAgent,
-    isBridgeReady,
+    getBridgeStatus,
   } from "../lib/ipc.js";
   import { registerShortcuts, Keys } from "../lib/utils/shortcuts.js";
   import { checkAndPromptForUpdates } from "../lib/utils/updater.js";
@@ -46,13 +46,24 @@
       showWelcome = false;
     }
 
-    // Poll for bridge readiness (event may have fired before listener was attached)
+    // Poll for bridge status (event may have fired before listener was attached)
     try {
-      const ready = await isBridgeReady();
-      if (ready) bridgeReady = true;
+      const status = await getBridgeStatus();
+      if (status.ready) {
+        bridgeReady = true;
+      } else if (status.error) {
+        session.error = `Bridge failed to start: ${status.error}`;
+      }
     } catch {
       // Not in Tauri or bridge not managed yet
     }
+
+    // Fallback: if bridge isn't ready after 15 seconds, show a warning
+    setTimeout(() => {
+      if (!bridgeReady) {
+        session.error = session.error || "Bridge is taking too long to start. The sidecar may be missing or failed to launch.";
+      }
+    }, 15000);
 
     // Listen for bridge events
     try {
