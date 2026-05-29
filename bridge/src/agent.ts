@@ -118,7 +118,30 @@ export async function initSession(cwd: string, sessionId?: string): Promise<Agen
 
   const config = getConfig();
   const authStorage = AuthStorage.create();
-  const modelRegistry = ModelRegistry.create(authStorage);
+
+  // Register the user's API key as a runtime key
+  // The settings store pushes provider config via set_config before init
+  if (config.defaultProvider && config._apiKey) {
+    authStorage.setRuntimeApiKey(config.defaultProvider, config._apiKey);
+  }
+
+  // Build a models.json for custom providers/models
+  // This lets the SDK know about models that aren't built-in
+  const modelsJsonPath = require("node:path").join(
+    require("node:os").tmpdir(),
+    "pi-desktop-models.json"
+  );
+  const modelsData: Record<string, unknown> = {};
+  if (config.defaultProvider && config.defaultModel) {
+    modelsData[config.defaultProvider] = {
+      [config.defaultModel]: {
+        api_url: config._apiUrl || "",
+      },
+    };
+    require("node:fs").writeFileSync(modelsJsonPath, JSON.stringify(modelsData, null, 2));
+  }
+
+  const modelRegistry = ModelRegistry.create(authStorage, modelsJsonPath);
 
   // Build options from config
   const sessionOptions: Record<string, any> = {

@@ -169,9 +169,12 @@ function setSetupCompleted(completed: boolean): void {
 /** Push custom tools and system prompt to the bridge */
 function pushConfigToBridge(): void {
   try {
+    const provider = settings.providers.find((p) => p.name === settings.default_provider);
     updateBridgeConfig({
       defaultProvider: settings.default_provider,
-      defaultModel: settings.providers.find((p) => p.name === settings.default_provider)?.models?.[0] ?? "",
+      defaultModel: provider?.models?.[0] ?? "",
+      _apiKey: provider?.api_key,
+      _apiUrl: provider?.api_url,
       systemPrompt: settings.system_prompt || undefined,
       customTools: settings.custom_tools.map((t) => ({
         name: t.name,
