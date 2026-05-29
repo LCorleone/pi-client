@@ -173,6 +173,7 @@ function pushConfigToBridge(): void {
     updateBridgeConfig({
       defaultProvider: settings.default_provider,
       defaultModel: provider?.models?.[0] ?? "",
+      models: provider?.models ?? [],
       _apiKey: provider?.api_key,
       _apiUrl: provider?.api_url,
       systemPrompt: settings.system_prompt || undefined,

@@ -24,6 +24,8 @@ export interface BridgeConfig {
   _apiUrl?: string;
   /** System prompt override */
   systemPrompt?: string;
+  /** All configured model ids (for the defaultProvider) */
+  models: string[];
   /** Custom tools to register with the agent */
   customTools: CustomToolDefinition[];
 }
@@ -34,6 +36,7 @@ export const DEFAULT_CONFIG: BridgeConfig = {
   _apiKey: undefined,
   _apiUrl: undefined,
   systemPrompt: undefined,
+  models: [],
   customTools: [],
 };
 

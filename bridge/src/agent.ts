@@ -132,12 +132,13 @@ export async function initSession(cwd: string, sessionId?: string): Promise<Agen
     "pi-desktop-models.json"
   );
   const modelsData: Record<string, unknown> = {};
-  if (config.defaultProvider && config.defaultModel) {
-    modelsData[config.defaultProvider] = {
-      [config.defaultModel]: {
+  if (config.defaultProvider && config.models && config.models.length > 0) {
+    modelsData[config.defaultProvider] = {};
+    for (const modelId of config.models) {
+      (modelsData[config.defaultProvider] as Record<string, unknown>)[modelId] = {
         api_url: config._apiUrl || "",
-      },
-    };
+      };
+    }
     require("node:fs").writeFileSync(modelsJsonPath, JSON.stringify(modelsData, null, 2));
   }
 
@@ -173,6 +174,12 @@ export async function initSession(cwd: string, sessionId?: string): Promise<Agen
   // Try to resolve default model from config
   if (config.defaultProvider && config.defaultModel) {
     const model = modelRegistry.find(config.defaultProvider, config.defaultModel);
+    if (model) {
+      sessionOptions.model = model;
+    }
+  } else if (config.defaultProvider && config.models && config.models.length > 0) {
+    // Fallback: use first model in the list as default
+    const model = modelRegistry.find(config.defaultProvider, config.models[0]);
     if (model) {
       sessionOptions.model = model;
     }
@@ -268,7 +275,16 @@ export function getModels(): { provider: string; id: string; name: string }[] {
 
   const config = getConfig();
 
-  // Only show the user's configured model — not the entire SDK registry
+  // Return all configured models for the default provider
+  if (config.defaultProvider && config.models && config.models.length > 0) {
+    return config.models.map((modelId) => ({
+      provider: config.defaultProvider,
+      id: modelId,
+      name: modelId,
+    }));
+  }
+
+  // Legacy fallback: single defaultModel
   if (config.defaultProvider && config.defaultModel) {
     return [{
       provider: config.defaultProvider,
