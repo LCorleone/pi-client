@@ -253,6 +253,10 @@ export async function testApiConnection(apiUrl: string, apiKey: string): Promise
   return invoke("test_api_connection", { apiUrl, apiKey });
 }
 
+export async function isBridgeReady(): Promise<boolean> {
+  return invoke("is_bridge_ready");
+}
+
 export async function steer(message: string): Promise<void> {
   return invoke("steer", { message });
 }

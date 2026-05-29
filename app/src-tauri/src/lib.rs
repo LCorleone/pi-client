@@ -83,6 +83,7 @@ pub fn run() {
             commands::rename_session,
             commands::get_last_session_id,
             // Bridge commands
+            commands::is_bridge_ready,
             commands::send_prompt,
             commands::abort_agent,
             commands::set_model,

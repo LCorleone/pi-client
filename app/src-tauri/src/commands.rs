@@ -159,6 +159,13 @@ pub async fn get_last_session_id(app: tauri::AppHandle) -> Result<Option<String>
 
 // ── Bridge Commands ────────────────────────────────────────────────
 
+/// Check if the bridge sidecar is running and ready
+#[tauri::command]
+pub async fn is_bridge_ready(app: tauri::AppHandle) -> Result<bool, String> {
+    let bridge = get_bridge(app).await?;
+    Ok(bridge.is_ready())
+}
+
 /// Send a prompt to the agent
 #[tauri::command]
 pub async fn send_prompt(

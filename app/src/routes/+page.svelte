@@ -11,6 +11,7 @@
     isTauriAvailable,
     sendPrompt,
     abortAgent,
+    isBridgeReady,
   } from "../lib/ipc.js";
   import { registerShortcuts, Keys } from "../lib/utils/shortcuts.js";
   import { checkAndPromptForUpdates } from "../lib/utils/updater.js";
@@ -43,6 +44,14 @@
     if (!appSettings.setupCompleted) {
       showSetup = true;
       showWelcome = false;
+    }
+
+    // Poll for bridge readiness (event may have fired before listener was attached)
+    try {
+      const ready = await isBridgeReady();
+      if (ready) bridgeReady = true;
+    } catch {
+      // Not in Tauri or bridge not managed yet
     }
 
     // Listen for bridge events

@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_shell::{process::CommandChild, ShellExt};
@@ -6,13 +7,20 @@ use tokio::sync::Mutex;
 /// Shared bridge process handle
 pub struct BridgeProcess {
     child: Arc<Mutex<Option<CommandChild>>>,
+    ready: AtomicBool,
 }
 
 impl BridgeProcess {
     pub fn new() -> Self {
         Self {
             child: Arc::new(Mutex::new(None)),
+            ready: AtomicBool::new(false),
         }
+    }
+
+    /// Check if the bridge sidecar is running and ready
+    pub fn is_ready(&self) -> bool {
+        self.ready.load(Ordering::SeqCst)
     }
 
     /// Send a JSON command to the bridge via stdin
@@ -29,6 +37,7 @@ impl BridgeProcess {
     pub async fn set_child(&self, new_child: CommandChild) {
         let mut guard = self.child.lock().await;
         *guard = Some(new_child);
+        self.ready.store(true, Ordering::SeqCst);
     }
 
     /// Kill the bridge process
@@ -37,6 +46,7 @@ impl BridgeProcess {
         if let Some(child) = guard.take() {
             let _ = child.kill();
         }
+        self.ready.store(false, Ordering::SeqCst);
     }
 }
 
