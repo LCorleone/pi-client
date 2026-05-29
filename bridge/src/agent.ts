@@ -267,28 +267,17 @@ export function getModels(): { provider: string; id: string; name: string }[] {
   if (!currentHandle) return [];
 
   const config = getConfig();
-  const all = currentHandle.modelRegistry.getAll();
 
-  // If user has configured a default model, only show that provider's models
-  if (config.defaultProvider) {
-    const providerLower = config.defaultProvider.toLowerCase();
-    return all
-      .filter((m) => m.provider.toLowerCase() === providerLower)
-      .map((m) => ({ provider: m.provider, id: m.id, name: m.name }));
+  // Only show the user's configured model — not the entire SDK registry
+  if (config.defaultProvider && config.defaultModel) {
+    return [{
+      provider: config.defaultProvider,
+      id: config.defaultModel,
+      name: config.defaultModel,
+    }];
   }
 
-  // If user configured a specific model, show just that model
-  if (config.defaultModel) {
-    return all
-      .filter((m) => m.id === config.defaultModel || m.name === config.defaultModel)
-      .map((m) => ({ provider: m.provider, id: m.id, name: m.name }));
-  }
-
-  return all.map((m) => ({
-    provider: m.provider,
-    id: m.id,
-    name: m.name,
-  }));
+  return [];
 }
 
 /** Get current state summary */
