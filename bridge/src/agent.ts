@@ -113,6 +113,9 @@ export async function initSession(cwd: string, sessionId?: string): Promise<Agen
   // Tear down existing session if any
   await destroySession();
 
+  // Set process CWD to the project directory so the SDK can find package.json etc.
+  try { process.chdir(cwd); } catch {}
+
   const config = getConfig();
   const authStorage = AuthStorage.create();
   const modelRegistry = ModelRegistry.create(authStorage);
