@@ -31,6 +31,13 @@
   let sidebarVisible = $state(true);
   let bridgeReady = $state(false);
 
+  // Push config to bridge once it becomes ready
+  $effect(() => {
+    if (bridgeReady && appSettings.setupCompleted) {
+      appSettings.pushConfigToBridge();
+    }
+  });
+
   onMount(async () => {
     // If not running inside Tauri, show welcome with note
     if (!isTauriAvailable()) {
