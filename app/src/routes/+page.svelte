@@ -28,7 +28,6 @@
   let showSetup = $state(false);
   let sidebarTab = $state<"sessions" | "files">("sessions");
   let sidebarVisible = $state(true);
-  let setupCwd = $state("");
 
   onMount(async () => {
     // If not running inside Tauri, show welcome with note
@@ -50,12 +49,24 @@
       const unlisten = await onAgentEvent((event) => {
         session.handleAgentEvent(event as Record<string, unknown>);
 
-        // Auto-save on agent_end
-        if (
-          event.type === "agent_event" &&
-          (event as Record<string, unknown>).event === "agent_end"
-        ) {
-          sessions.onAgentEnd();
+        if (event.type === "agent_event") {
+          const innerType = (event as Record<string, unknown>).event as string;
+
+          // Auto-save on agent_end
+          if (innerType === "agent_end") {
+            sessions.onAgentEnd();
+          }
+
+          // Mark dirty during streaming so auto-save debounce kicks in
+          if (
+            innerType === "text_delta" ||
+            innerType === "thinking_delta" ||
+            innerType === "tool_call_start" ||
+            innerType === "tool_call_update" ||
+            innerType === "tool_call_end"
+          ) {
+            sessions.markDirty();
+          }
         }
       });
 
@@ -85,19 +96,6 @@
     }
   });
 
-  /** Called when the setup wizard finishes */
-  function handleSetupComplete(event: CustomEvent) {
-    showSetup = false;
-    // After setup, the user still needs to pick a folder to start a session
-    showWelcome = true;
-  }
-
-  /** Called when SetupWizard signals it's done (via custom event or store) */
-  function handleSetupDone() {
-    showSetup = false;
-    showWelcome = true;
-  }
-
   async function handlePickDirectory() {
     try {
       const dir = await pickDirectory();
@@ -116,6 +114,10 @@
   }
 
   function handleNewSession() {
+    // Save current session before discarding
+    if (sessions.currentSessionId && sessions.dirty) {
+      sessions.saveCurrentSession();
+    }
     session.reset();
     sessions.currentSessionId = null;
     showWelcome = true;
@@ -131,14 +133,32 @@
       handlePickDirectory();
     };
     window.addEventListener("new-session", handler);
-    return () => window.removeEventListener("new-session", handler);
-  });
 
-  // Watch for setup completion
-  $effect(() => {
-    if (appSettings.setupCompleted && showSetup) {
-      handleSetupDone();
-    }
+    // Listen for setup wizard completion
+    const setupHandler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      showSetup = false;
+      if (detail?.cwd) {
+        // User selected a folder during setup — create session directly
+        try {
+          await sessions.createSession(detail.cwd);
+          showWelcome = false;
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Failed to initialize session";
+          session.error = msg;
+          showWelcome = true;
+        }
+      } else {
+        // No folder selected during setup — show welcome to pick one
+        showWelcome = true;
+      }
+    };
+    window.addEventListener("setup-complete", setupHandler);
+
+    return () => {
+      window.removeEventListener("new-session", handler);
+      window.removeEventListener("setup-complete", setupHandler);
+    };
   });
 </script>
 

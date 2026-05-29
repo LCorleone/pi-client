@@ -249,6 +249,10 @@ export async function pickDirectory(): Promise<string | null> {
   return invoke("pick_directory");
 }
 
+export async function testApiConnection(apiUrl: string, apiKey: string): Promise<boolean> {
+  return invoke("test_api_connection", { apiUrl, apiKey });
+}
+
 export async function steer(message: string): Promise<void> {
   return invoke("steer", { message });
 }

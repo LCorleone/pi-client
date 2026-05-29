@@ -16,33 +16,24 @@ async function main(): Promise<void> {
   // Signal readiness
   writeEvent({ type: "bridge_ready" });
 
+  let commandQueue = Promise.resolve();
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     terminal: false,
   });
 
-  rl.on("line", async (line: string) => {
+  rl.on("line", (line: string) => {
     const trimmed = line.trim();
     if (!trimmed) return;
 
-    const cmd = parseCommand(trimmed);
-    if (!cmd) {
-      writeEvent({
-        type: "bridge_error",
-        error: `Invalid command: ${trimmed}`,
-      });
-      return;
-    }
-
-    await handleCommand(cmd);
+    commandQueue = commandQueue.then(() => handleCommandLine(trimmed));
   });
 
   rl.on("close", () => {
     // stdin closed — shutdown
-    agent.destroySession().then(() => {
-      process.exit(0);
-    });
+    agent.destroySession().catch(() => {}).finally(() => process.exit(0));
   });
 
   // Keep process alive
@@ -50,6 +41,19 @@ async function main(): Promise<void> {
 }
 
 // ── Command dispatch ───────────────────────────────────────────────
+
+/** Parse a line and dispatch to the appropriate handler */
+async function handleCommandLine(line: string): Promise<void> {
+  const cmd = parseCommand(line);
+  if (!cmd) {
+    writeEvent({
+      type: "bridge_error",
+      error: `Invalid command: ${line}`,
+    });
+    return;
+  }
+  await handleCommand(cmd);
+}
 
 async function handleCommand(cmd: BridgeCommand): Promise<void> {
   try {

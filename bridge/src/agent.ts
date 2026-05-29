@@ -35,6 +35,17 @@ export function isStreaming(): boolean {
   return currentHandle?.session.isStreaming ?? false;
 }
 
+// ── Internal helpers ───────────────────────────────────────────────
+
+/** Shell-escape a string to prevent injection */
+function shellEscape(s: string): string {
+  // Safe POSIX shell escaping: use $'...' syntax with hex-escaped special chars
+  const escaped = s.replace(/[\\\n\r\x00-\x1f"']/g, (ch) => {
+    return "\\x" + ch.charCodeAt(0).toString(16).padStart(2, "0");
+  });
+  return "$'" + escaped + "'";
+}
+
 /** Build custom tools from config definitions */
 function buildCustomTools(configTools: CustomToolDefinition[]) {
   return configTools.map((def) =>
@@ -62,11 +73,11 @@ function buildCustomTools(configTools: CustomToolDefinition[]) {
               details: {},
             };
           } else if (def.handler === "exec" && def.command) {
-            // Execute command template
+            // Execute command template with shell-escaped parameters
             const { execSync } = await import("node:child_process");
             let cmd = def.command;
             for (const [key, val] of Object.entries(params)) {
-              cmd = cmd.replace(`{${key}}`, String(val));
+              cmd = cmd.replace(`{${key}}`, shellEscape(String(val)));
             }
             const output = execSync(cmd, { timeout: 30000 }).toString();
             return {
@@ -176,25 +187,16 @@ export async function sendPrompt(message: string, images?: Array<{ dataUrl: stri
   if (!currentHandle) throw new Error("No active session. Send 'init' first.");
 
   if (images && images.length > 0) {
-    // Build content blocks: text + images
-    const contentBlocks: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> = [
-      { type: "text", text: message },
-    ];
-    for (const img of images) {
-      const match = img.dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/);
-      if (match) {
-        contentBlocks.push({
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: match[1],
-            data: match[2],
-          },
-        });
-      }
-    }
-    // @ts-expect-error - Pi SDK may accept content blocks
-    await currentHandle.session.prompt(contentBlocks);
+    // Parse images into SDK format: { type: "image", source: { type: "base64", mediaType, data } }
+    const sdkImages = images
+      .map((img) => {
+        const match = img.dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/);
+        return match
+          ? { type: "image" as const, source: { type: "base64" as const, mediaType: match[1], data: match[2] } }
+          : null;
+      })
+      .filter(Boolean) as Array<{ type: "image"; source: { type: "base64"; mediaType: string; data: string } }>;
+    await currentHandle.session.prompt(message, { images: sdkImages });
   } else {
     await currentHandle.session.prompt(message);
   }

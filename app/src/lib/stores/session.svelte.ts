@@ -222,12 +222,10 @@ function handleStateChanged(event: Record<string, unknown>): void {
 function flushStreamingMessage(): void {
   if (!streamingText && !streamingThinking && activeToolCalls.size === 0) return;
 
-  // Collect finalized tool calls into the message
+  // Collect all tool calls into the message (including still-running ones)
   const toolCalls: ToolCall[] = [];
   for (const tc of activeToolCalls.values()) {
-    if (tc.status === "done" || tc.status === "error") {
-      toolCalls.push({ ...tc });
-    }
+    toolCalls.push({ ...tc });
   }
 
   const msg: Message = {

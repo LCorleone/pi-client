@@ -92,9 +92,6 @@ async function createSession(cwd: string): Promise<string> {
   await initSession(cwd);
 
   // Update session store
-  session.cwd = cwd;
-  session.sessionId = id;
-  session.initialized = true;
   session.reset();
   session.cwd = cwd;
   session.sessionId = id;

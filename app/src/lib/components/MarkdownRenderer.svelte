@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Marked } from "marked";
+  import DOMPurify from "dompurify";
   import hljs from "highlight.js";
   import "highlight.js/styles/github-dark.css";
 
@@ -26,7 +27,8 @@
       if (backtickCount % 2 !== 0) {
         safeText += "\n```";
       }
-      return marked.parse(safeText, { async: false }) as string;
+      const rawHtml = marked.parse(safeText, { async: false }) as string;
+      return DOMPurify.sanitize(rawHtml);
     } catch {
       // Fallback: escape and display as-is
       return `<p>${text.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</p>`;

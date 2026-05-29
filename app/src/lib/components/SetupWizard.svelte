@@ -43,24 +43,13 @@
     connectionTestResult = null;
 
     try {
-      // Simple connection test — just verify the URL is reachable
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
-      const response = await fetch(apiUrl, {
-        method: "HEAD",
-        signal: controller.signal,
-        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-      }).catch(() => null);
-
-      clearTimeout(timeout);
-
-      // Even a 401 means the server is reachable and the key format matters
-      connectionTestResult = response && (response.status === 200 || response.status === 401 || response.status === 403)
-        ? "success"
-        : "error";
+      // Use Tauri HTTP if available, otherwise skip test
+      const { invoke } = await import("@tauri-apps/api/core");
+      const result = await invoke("test_api_connection", { apiUrl, apiKey });
+      connectionTestResult = result ? "success" : "error";
     } catch {
-      connectionTestResult = "error";
+      // Can't test outside Tauri (dev mode) — show nothing
+      connectionTestResult = null;
     } finally {
       testingConnection = false;
     }
@@ -104,6 +93,10 @@
     };
     await appSettings.saveSettings();
     appSettings.setSetupCompleted(true);
+
+    // Dispatch event so +page.svelte knows setup is done
+    // Include cwd if user selected one
+    window.dispatchEvent(new CustomEvent("setup-complete", { detail: { cwd } }));
 
     step = 4;
   }

@@ -14,6 +14,31 @@ async fn get_bridge(app: tauri::AppHandle) -> Result<BridgeRef, String> {
         .ok_or_else(|| "Bridge not initialized".to_string())
 }
 
+/// Validate session ID to prevent path traversal attacks
+fn validate_session_id(id: &str) -> Result<(), String> {
+    if id.is_empty() || id.len() > 128 {
+        return Err("Invalid session ID".to_string());
+    }
+    if !id
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+    {
+        return Err("Session ID contains invalid characters".to_string());
+    }
+    Ok(())
+}
+
+/// Validate a file path to prevent traversal attacks
+fn validate_path(path: &str) -> Result<(), String> {
+    if path.contains("..") {
+        return Err("Path must not contain '..'".to_string());
+    }
+    if !path.starts_with('/') && !path.starts_with('\\') && !path.contains(':') {
+        return Err("Path must be absolute".to_string());
+    }
+    Ok(())
+}
+
 // ── Session Persistence Commands ───────────────────────────────────
 
 /// Get the sessions directory, creating it if needed
@@ -71,6 +96,7 @@ pub async fn load_session(
     app: tauri::AppHandle,
     session_id: String,
 ) -> Result<SavedSession, String> {
+    validate_session_id(&session_id)?;
     let dir = sessions_dir(&app)?;
     let path = dir.join(format!("{session_id}.json"));
     let content =
@@ -81,6 +107,7 @@ pub async fn load_session(
 /// Save a session to disk
 #[tauri::command]
 pub async fn save_session(app: tauri::AppHandle, session: SavedSession) -> Result<(), String> {
+    validate_session_id(&session.id)?;
     let dir = sessions_dir(&app)?;
     let path = dir.join(format!("{}.json", session.id));
     let content = serde_json::to_string_pretty(&session)
@@ -92,6 +119,7 @@ pub async fn save_session(app: tauri::AppHandle, session: SavedSession) -> Resul
 /// Delete a session from disk
 #[tauri::command]
 pub async fn delete_session(app: tauri::AppHandle, session_id: String) -> Result<(), String> {
+    validate_session_id(&session_id)?;
     let dir = sessions_dir(&app)?;
     let path = dir.join(format!("{session_id}.json"));
     if path.exists() {
@@ -107,6 +135,7 @@ pub async fn rename_session(
     session_id: String,
     name: String,
 ) -> Result<(), String> {
+    validate_session_id(&session_id)?;
     let dir = sessions_dir(&app)?;
     let path = dir.join(format!("{session_id}.json"));
     let content =
@@ -338,6 +367,7 @@ const SKIP_DIRS: &[&str] = &[
 /// List files in a directory (one level deep)
 #[tauri::command]
 pub async fn list_files(dir: String, _depth: Option<usize>) -> Result<Vec<FileEntry>, String> {
+    validate_path(&dir)?;
     let path = std::path::Path::new(&dir);
     if !path.is_dir() {
         return Err(format!("Not a directory: {dir}"));
@@ -414,16 +444,46 @@ pub async fn save_settings(app: tauri::AppHandle, settings: AppSettings) -> Resu
     Ok(())
 }
 
+/// Test API connection by making a simple request
+#[tauri::command]
+pub async fn test_api_connection(api_url: String, api_key: String) -> Result<bool, String> {
+    // Reject non-HTTPS URLs to prevent key leakage
+    if !api_url.starts_with("https://") {
+        return Err("API URL must use https://".to_string());
+    }
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&api_url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("x-api-key", &api_key) // Anthropic uses this header
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await;
+
+    match response {
+        Ok(resp) => {
+            let status = resp.status();
+            // 200, 401, 403 all mean server is reachable
+            Ok(status.is_success() || status.as_u16() == 401 || status.as_u16() == 403)
+        }
+        Err(e) => Err(format!("Cannot reach {}: {}", api_url, e)),
+    }
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
 
-/// Generate a simple unique ID
+/// Generate a unique ID with counter to avoid collisions within same millisecond
 fn uuid() -> String {
+    use std::sync::atomic::{AtomicU32, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();
-    format!("{now:x}")
+    let c = COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!("{now:x}-{c:x}")
 }
 
 /// Current timestamp in milliseconds

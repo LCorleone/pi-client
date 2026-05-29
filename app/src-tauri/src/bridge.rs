@@ -52,6 +52,9 @@ pub async fn spawn_and_attach(app: &AppHandle, bridge: &Arc<BridgeProcess>) -> R
 
     bridge.set_child(child).await;
 
+    // Clone the bridge Arc so the reader task can clear the handle on exit
+    let bridge_clone = bridge.clone();
+
     // Read events from bridge stdout and emit to frontend
     let app_handle = app.clone();
     tokio::spawn(async move {
@@ -75,11 +78,14 @@ pub async fn spawn_and_attach(app: &AppHandle, bridge: &Arc<BridgeProcess>) -> R
                 }
                 tauri_plugin_shell::process::CommandEvent::Terminated(status) => {
                     eprintln!("Bridge process exited: {:?}", status);
+                    // Clear the stale child handle so subsequent commands fail cleanly
+                    bridge_clone.kill().await;
                     let _ = app_handle.emit("bridge_exited", ());
                     break;
                 }
                 tauri_plugin_shell::process::CommandEvent::Error(err) => {
                     eprintln!("Bridge error: {}", err);
+                    bridge_clone.kill().await;
                     let _ = app_handle.emit("bridge_exited", ());
                     break;
                 }
