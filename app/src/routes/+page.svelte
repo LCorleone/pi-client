@@ -114,8 +114,8 @@
         showWelcome = false;
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to initialize session";
-      session.error = msg;
+      const msg = err instanceof Error ? err.message : String(err);
+      session.error = msg || "Failed to initialize session";
     }
   }
 
