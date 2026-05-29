@@ -45,7 +45,7 @@ impl BridgeProcess {
     /// Kill the bridge process
     pub async fn kill(&self) {
         let mut guard = self.child.lock().await;
-        if let Some(child) = guard.take() {
+        if let Some(mut child) = guard.take() {
             let _ = child.kill().await;
         }
         self.ready.store(false, Ordering::SeqCst);
