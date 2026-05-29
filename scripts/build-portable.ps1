@@ -37,7 +37,7 @@ New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
 Copy-Item app\src-tauri\target\release\pi-desktop.exe "$DistDir\$AppName.exe"
 
 # Copy bridge sidecar (rename for cleanliness)
-Copy-Item bridge\dist\pi-bridge-x86_64-pc-windows-msvc.exe "$DistDir\pi-bridge.exe"
+Copy-Item bridge\dist\pi-bridge-x86_64-pc-windows-msvc.exe "$DistDir\pi-bridge-x86_64-pc-windows-msvc.exe"
 
 # Copy WebView2 bootstrapper if it exists in the Tauri output
 $webview2Path = "app\src-tauri\target\release\WebView2Loader.dll"
