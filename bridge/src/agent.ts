@@ -40,7 +40,7 @@ export function isStreaming(): boolean {
 /** Shell-escape a string to prevent injection */
 function shellEscape(s: string): string {
   // Safe POSIX shell escaping: use $'...' syntax with hex-escaped special chars
-  const escaped = s.replace(/[\\\n\r\x00-\x1f"']/g, (ch) => {
+  const escaped = s.replace(/[\\\n\r\x00-\x1f"'\$]/g, (ch) => {
     return "\\x" + ch.charCodeAt(0).toString(16).padStart(2, "0");
   });
   return "$'" + escaped + "'";
@@ -73,15 +73,20 @@ function buildCustomTools(configTools: CustomToolDefinition[]) {
               details: {},
             };
           } else if (def.handler === "exec" && def.command) {
-            // Execute command template with shell-escaped parameters
-            const { execSync } = await import("node:child_process");
+            // Execute command template with shell-escaped parameters (async)
+            const { exec: execAsync } = await import("node:child_process");
             let cmd = def.command;
             for (const [key, val] of Object.entries(params)) {
               cmd = cmd.replace(`{${key}}`, shellEscape(String(val)));
             }
-            const output = execSync(cmd, { timeout: 30000 }).toString();
+            const output = await new Promise<string>((resolve, reject) => {
+              execAsync(cmd, { timeout: 30000 }, (err, stdout) => {
+                if (err) reject(err);
+                else resolve(stdout.toString());
+              });
+            });
             return {
-              content: [{ type: "text" as const, text: output }],
+              content: [{ type: "text" as const, text: output || "(no output)" }],
               details: {},
             };
           } else {

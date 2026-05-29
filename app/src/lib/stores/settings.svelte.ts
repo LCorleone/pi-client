@@ -39,6 +39,8 @@ let setupCompleted = $derived(settings.setup_completed);
 
 // ── Actions ────────────────────────────────────────────────────────
 
+let fontSizeSaveTimer: ReturnType<typeof setTimeout>;
+
 async function loadSettings(): Promise<void> {
   try {
     settings = await getSettings();
@@ -95,7 +97,9 @@ function setTheme(theme: string): void {
 
 function setFontSize(size: number): void {
   settings = { ...settings, font_size: size };
-  saveSettings();
+  // Debounced save — don't write on every drag pixel
+  clearTimeout(fontSizeSaveTimer);
+  fontSizeSaveTimer = setTimeout(() => saveSettings(), 500);
 }
 
 function setShellPath(path: string | null): void {
@@ -194,6 +198,9 @@ function applyTheme(theme: string): void {
 class SettingsStore {
   get settings() {
     return settings;
+  }
+  set settings(value: AppSettings) {
+    settings = value;
   }
   get isLoaded() {
     return isLoaded;
