@@ -143,16 +143,20 @@ pub async fn spawn_and_attach(app: &AppHandle, bridge: &Arc<BridgeProcess>) -> R
         }
         // stdout closed — bridge exited
         eprintln!("Bridge stdout closed");
+        bridge_clone.set_error("Bridge process exited unexpectedly".to_string()).await;
         bridge_clone.kill().await;
         let _ = app_handle.emit("bridge_exited", ());
     });
 
-    // Read stderr for logging
+    // Read stderr and emit to frontend for debugging
+    let app_handle_stderr = app.clone();
     tokio::spawn(async move {
         let reader = BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            eprintln!("Bridge stderr: {}", line.trim());
+            let text = line.trim().to_string();
+            eprintln!("Bridge stderr: {}", text);
+            let _ = app_handle_stderr.emit("bridge_stderr", text);
         }
     });
 

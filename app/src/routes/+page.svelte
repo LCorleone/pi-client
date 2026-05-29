@@ -100,6 +100,13 @@
         await listen<string>("bridge_error", (event) => {
           session.error = `Bridge error: ${event.payload}`;
         });
+        await listen<string>("bridge_stderr", (event) => {
+          console.error("[Bridge stderr]", event.payload);
+          // If bridge crashes, show the stderr output
+          if (event.payload.includes("Error") || event.payload.includes("error") || event.payload.includes("panic")) {
+            session.error = session.error || `Bridge: ${event.payload}`;
+          }
+        });
         await listen("bridge_ready", () => {
           bridgeReady = true;
         });
