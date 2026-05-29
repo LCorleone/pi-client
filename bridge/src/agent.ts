@@ -246,10 +246,18 @@ export function getModels(): { provider: string; id: string; name: string }[] {
   const config = getConfig();
   const all = currentHandle.modelRegistry.getAll();
 
-  // If user has configured a provider, only show models from that provider
+  // If user has configured a default model, only show that provider's models
   if (config.defaultProvider) {
+    const providerLower = config.defaultProvider.toLowerCase();
     return all
-      .filter((m) => m.provider === config.defaultProvider)
+      .filter((m) => m.provider.toLowerCase() === providerLower)
+      .map((m) => ({ provider: m.provider, id: m.id, name: m.name }));
+  }
+
+  // If user configured a specific model, show just that model
+  if (config.defaultModel) {
+    return all
+      .filter((m) => m.id === config.defaultModel || m.name === config.defaultModel)
       .map((m) => ({ provider: m.provider, id: m.id, name: m.name }));
   }
 
