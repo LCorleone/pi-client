@@ -50,13 +50,7 @@
   },
   "plugins": {
     "shell": {
-      "sidecar": true,
-      "scope": [
-        {
-          "name": "binaries/pi-bridge",
-          "sidecar": true
-        }
-      ]
+      "open": true
     },
     "updater": {
       "pubkey": "",
