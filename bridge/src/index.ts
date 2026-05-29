@@ -13,12 +13,6 @@ import { getConfig, setConfig, type BridgeConfig } from "./config.js";
 // ── Main loop ──────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  // Set CWD to a temp directory so the SDK doesn't try to read package.json
-  // from the exe folder (which is the portable ZIP directory)
-  // The real project CWD will be set via process.chdir() when initSession runs
-  const tmpDir = require("node:os").tmpdir();
-  try { process.chdir(tmpDir); } catch {}
-
   // Signal readiness
   writeEvent({ type: "bridge_ready" });
 

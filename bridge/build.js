@@ -1,7 +1,7 @@
 import esbuild from "esbuild";
 
 await esbuild.build({
-  entryPoints: ["src/index.ts"],
+  entryPoints: ["src/bootstrap.js"],
   bundle: true,
   platform: "node",
   target: "node22",
