@@ -243,8 +243,17 @@ export async function setModel(provider: string, modelId: string): Promise<void>
 export function getModels(): { provider: string; id: string; name: string }[] {
   if (!currentHandle) return [];
 
-  const models = currentHandle.modelRegistry.getAll();
-  return models.map((m) => ({
+  const config = getConfig();
+  const all = currentHandle.modelRegistry.getAll();
+
+  // If user has configured a provider, only show models from that provider
+  if (config.defaultProvider) {
+    return all
+      .filter((m) => m.provider === config.defaultProvider)
+      .map((m) => ({ provider: m.provider, id: m.id, name: m.name }));
+  }
+
+  return all.map((m) => ({
     provider: m.provider,
     id: m.id,
     name: m.name,

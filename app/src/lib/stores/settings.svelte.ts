@@ -48,6 +48,11 @@ async function loadSettings(): Promise<void> {
 
     // Apply theme on load
     applyTheme(settings.theme);
+
+    // Push config to bridge (provider, model, tools, system prompt)
+    if (settings.setup_completed) {
+      pushConfigToBridge();
+    }
   } catch (err) {
     console.error("[Settings] Failed to load:", err);
     settings = defaultSettings();

@@ -39,6 +39,9 @@ Copy-Item app\src-tauri\target\release\pi-desktop.exe "$DistDir\$AppName.exe"
 # Copy bridge sidecar (rename for cleanliness)
 Copy-Item bridge\dist\pi-bridge-x86_64-pc-windows-msvc.exe "$DistDir\pi-bridge-x86_64-pc-windows-msvc.exe"
 
+# Write a minimal package.json — Pi SDK reads this at startup
+'{"name":"pi-desktop-bridge","version":"0.1.0","private":true}' | Out-File -Encoding UTF8 "$DistDir\package.json"
+
 # Copy WebView2 bootstrapper if it exists in the Tauri output
 $webview2Path = "app\src-tauri\target\release\WebView2Loader.dll"
 if (Test-Path $webview2Path) {

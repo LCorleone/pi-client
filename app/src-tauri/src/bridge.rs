@@ -99,11 +99,12 @@ pub async fn spawn_and_attach(app: &AppHandle, bridge: &Arc<BridgeProcess>) -> R
         ));
     }
 
-    // Spawn the bridge process
+    // Spawn the bridge process (hidden console window on Windows)
     let mut child = Command::new(&bridge_path)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .spawn()
         .map_err(|e| format!("Failed to spawn bridge at {}: {e}", bridge_path.display()))?;
 

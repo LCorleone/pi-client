@@ -108,8 +108,12 @@ jobs:
           # Copy main app executable
           Copy-Item app/src-tauri/target/release/pi-desktop.exe "$distDir/Pi Desktop.exe"
 
-          # Copy bridge sidecar — Tauri expects it next to the exe
+          # Copy bridge sidecar
           Copy-Item bridge/dist/pi-bridge-x86_64-pc-windows-msvc.exe "$distDir/pi-bridge-x86_64-pc-windows-msvc.exe"
+
+          # Write a minimal package.json next to the bridge exe
+          # Pi SDK reads this at startup to detect project context
+          '{"name":"pi-desktop-bridge","version":"0.1.0","private":true}' | Out-File -Encoding UTF8 "$distDir/package.json"
 
           # Copy WebView2Loader.dll if present
           if (Test-Path "app/src-tauri/target/release/WebView2Loader.dll") {
