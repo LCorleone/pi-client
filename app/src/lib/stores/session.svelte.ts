@@ -81,7 +81,9 @@ function handleAgentEvent(event: Record<string, unknown>): void {
       break;
 
     case "bridge_log":
+      // Show bridge logs on screen for debugging
       console.log("[Bridge]", event.message);
+      error = `[Bridge] ${event.message}`;
       break;
 
     case "response":
