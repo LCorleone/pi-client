@@ -176,12 +176,9 @@ export async function initSession(cwd: string, sessionId?: string): Promise<Agen
     const model = modelRegistry.find(config.defaultProvider, config.defaultModel);
     if (model) {
       sessionOptions.model = model;
-    }
-  } else if (config.defaultProvider && config.models && config.models.length > 0) {
-    // Fallback: use first model in the list as default
-    const model = modelRegistry.find(config.defaultProvider, config.models[0]);
-    if (model) {
-      sessionOptions.model = model;
+      writeEvent({ type: "bridge_log", message: `Model resolved: ${model.provider}/${model.id}` });
+    } else {
+      writeEvent({ type: "bridge_log", message: `WARNING: Model not found in registry: ${config.defaultProvider}/${config.defaultModel}. Available: ${modelRegistry.getAll().slice(0, 5).map((m: any) => m.provider + "/" + m.id).join(", ")}` });
     }
   }
 
@@ -223,6 +220,8 @@ export async function destroySession(): Promise<void> {
 /** Send a prompt to the current session */
 export async function sendPrompt(message: string, images?: Array<{ dataUrl: string; name: string }>): Promise<void> {
   if (!currentHandle) throw new Error("No active session. Send 'init' first.");
+
+  writeEvent({ type: "bridge_log", message: `Sending prompt (${message.length} chars), streaming: ${currentHandle.session.isStreaming}` });
 
   if (images && images.length > 0) {
     // Parse images into SDK format: { type: "image", source: { type: "base64", mediaType, data } }

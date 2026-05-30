@@ -80,6 +80,10 @@ function handleAgentEvent(event: Record<string, unknown>): void {
       error = event.error as string;
       break;
 
+    case "bridge_log":
+      console.log("[Bridge]", event.message);
+      break;
+
     case "response":
       handleResponse(event);
       break;
